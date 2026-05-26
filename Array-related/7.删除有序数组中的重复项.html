@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>删除有序数组中的重复项 - 算法可视化</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <style>
+        :root {
+            --bg: #0F172A;
+            --primary: #38BDF8;
+            --secondary: #94A3B8;
+            --accent: #F59E0B;
+            --success: #10B981;
+            --card-bg: #1E293B;
+            --font-main: 'JetBrains Mono', monospace;
+        }
+
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            background-color: var(--bg);
+            color: white; font-family: var(--font-main);
+            overflow: hidden;
+        }
+
+        #app-container {
+            width: 100vw; height: 100vh;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+        }
+
+        /* 顶部标题栏 */
+        .header {
+            position: absolute; top: 30px; left: 40px;
+            border-left: 4px solid var(--primary);
+            padding-left: 20px;
+        }
+        .header h1 { margin: 0; font-size: 24px; letter-spacing: 1px; }
+        .header p { margin: 5px 0 0; color: var(--secondary); font-size: 14px; }
+
+        /* 主画布 */
+        #main-svg {
+            width: 1100px; height: 500px;
+        }
+
+        /* 代码面板 */
+        .code-panel {
+            position: absolute; bottom: 40px; right: 40px;
+            background: var(--card-bg);
+            padding: 20px; border-radius: 12px;
+            border: 1px solid #334155;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            width: 450px; font-size: 14px;
+        }
+        .code-line {
+            line-height: 1.6; color: #94A3B8;
+            transition: all 0.3s; padding: 0 8px;
+            border-radius: 4px;
+        }
+        .code-highlight {
+            background: rgba(56, 189, 248, 0.2);
+            color: #F8FAFC;
+            transform: translateX(5px);
+        }
+
+        /* 状态指示器 */
+        .status-box {
+            position: absolute; top: 40px; right: 40px;
+            display: flex; gap: 20px;
+        }
+        .stat-item {
+            background: var(--card-bg);
+            padding: 10px 20px; border-radius: 8px;
+            border-bottom: 3px solid var(--secondary);
+        }
+        .stat-item.active-slow { border-color: var(--accent); }
+        .stat-item.active-fast { border-color: var(--primary); }
+        .stat-label { font-size: 12px; color: var(--secondary); display: block; }
+        .stat-value { font-size: 20px; font-weight: 700; color: white; }
+
+        /* 底部说明 */
+        .footer-desc {
+            position: absolute; bottom: 40px; left: 40px;
+            width: 500px; color: var(--primary);
+            font-size: 18px; font-weight: 400;
+        }
+    </style>
+</head>
+<body>
+
+<div id="app-container">
+    <div class="header">
+        <h1>双指针法：原地去重</h1>
+        <p>LeetCode 26. Remove Duplicates from Sorted Array</p>
+    </div>
+
+    <div class="status-box">
+        <div class="stat-item active-slow">
+            <span class="stat-label">SLOW (待写入位置)</span>
+            <span id="val-slow" class="stat-value">1</span>
+        </div>
+        <div class="stat-item active-fast">
+            <span class="stat-label">FAST (当前扫描)</span>
+            <span id="val-fast" class="stat-value">1</span>
+        </div>
+    </div>
+
+    <svg id="main-svg" viewBox="0 0 1100 500">
+        <defs>
+            <filter id="glow">
+                <feGaussianBlur stdDeviation="3" result="coloredBlur" />
+                <feMerge>
+                    <feMergeNode in="coloredBlur" />
+                    <feMergeNode in="SourceGraphic" />
+                </feMerge>
+            </filter>
+        </defs>
+        
+        <!-- 数组索引 -->
+        <g id="indices-layer"></g>
+        <!-- 数组背景格 -->
+        <g id="slots-layer"></g>
+        <!-- 数组元素 -->
+        <g id="elements-layer"></g>
+        <!-- 指针 -->
+        <g id="pointers-layer">
+            <g id="ptr-slow">
+                <path d="M 0 0 L 10 -15 L -10 -15 Z" fill="var(--accent)" />
+                <text y="-25" text-anchor="middle" fill="var(--accent)" font-size="14" font-weight="bold">slow</text>
+            </g>
+            <g id="ptr-fast">
+                <path d="M 0 0 L 10 15 L -10 15 Z" fill="var(--primary)" />
+                <text y="30" text-anchor="middle" fill="var(--primary)" font-size="14" font-weight="bold">fast</text>
+            </g>
+        </g>
+    </svg>
+
+    <div class="code-panel" id="code-panel">
+        <div class="code-line" id="line-1">int fast = 1, slow = 1;</div>
+        <div class="code-line" id="line-2">while (fast &lt; n) {</div>
+        <div class="code-line" id="line-3">&nbsp;&nbsp;if (nums[fast] != nums[fast - 1]) {</div>
+        <div class="code-line" id="line-4">&nbsp;&nbsp;&nbsp;&nbsp;nums[slow] = nums[fast];</div>
+        <div class="code-line" id="line-5">&nbsp;&nbsp;&nbsp;&nbsp;++slow;</div>
+        <div class="code-line" id="line-6">&nbsp;&nbsp;}</div>
+        <div class="code-line" id="line-7">&nbsp;&nbsp;++fast;</div>
+        <div class="code-line" id="line-8">}</div>
+        <div class="code-line" id="line-9">return slow;</div>
+    </div>
+
+    <div class="footer-desc" id="step-desc">初始化指针...</div>
+</div>
+
+<script>
+    const nums = [0, 0, 1, 1, 1, 2, 2, 3, 3, 4];
+    const n = nums.length;
+    const boxSize = 80;
+    const gap = 15;
+    const startX = 100;
+    const startY = 250;
+
+    const slotsLayer = document.getElementById('slots-layer');
+    const elementsLayer = document.getElementById('elements-layer');
+    const indicesLayer = document.getElementById('indices-layer');
+    const ptrSlow = document.getElementById('ptr-slow');
+    const ptrFast = document.getElementById('ptr-fast');
+    const stepDesc = document.getElementById('step-desc');
+    const valSlow = document.getElementById('val-slow');
+    const valFast = document.getElementById('val-fast');
+
+    let elementNodes = [];
+
+    function init() {
+        for (let i = 0; i < n; i++) {
+            const x = startX + i * (boxSize + gap);
+            
+            // 绘制索引
+            const idxText = document.createElementNS("http://www.w3.org/2000/svg", "text");
+            idxText.setAttribute("x", x + boxSize/2);
+            idxText.setAttribute("y", startY - 60);
+            idxText.setAttribute("text-anchor", "middle");
+            idxText.setAttribute("fill", "#475569");
+            idxText.setAttribute("font-size", "14");
+            idxText.textContent = `[${i}]`;
+            indicesLayer.appendChild(idxText);
+
+            // 绘制格子
+            const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+            rect.setAttribute("x", x);
+            rect.setAttribute("y", startY - boxSize/2);
+            rect.setAttribute("width", boxSize);
+            rect.setAttribute("height", boxSize);
+            rect.setAttribute("rx", "8");
+            rect.setAttribute("fill", "none");
+            rect.setAttribute("stroke", "#334155");
+            rect.setAttribute("stroke-width", "2");
+            slotsLayer.appendChild(rect);
+
+            // 绘制数字
+            const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+            g.setAttribute("transform", `translate(${x + boxSize/2}, ${startY})`);
+            
+            const bg = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+            bg.setAttribute("x", -boxSize/2 + 4);
+            bg.setAttribute("y", -boxSize/2 + 4);
+            bg.setAttribute("width", boxSize - 8);
+            bg.setAttribute("height", boxSize - 8);
+            bg.setAttribute("rx", "6");
+            bg.setAttribute("fill", "#1E293B");
+            
+            const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+            text.setAttribute("text-anchor", "middle");
+            text.setAttribute("dominant-baseline", "central");
+            text.setAttribute("fill", "white");
+            text.setAttribute("font-size", "28");
+            text.setAttribute("font-weight", "bold");
+            text.textContent = nums[i];
+
+            g.appendChild(bg);
+            g.appendChild(text);
+            elementsLayer.appendChild(g);
+            elementNodes.push({g, text, bg, val: nums[i]});
+        }
+        updatePointers(1, 1, false);
+    }
+
+    function updatePointers(s, f, animate = true) {
+        const sx = startX + s * (boxSize + gap) + boxSize/2;
+        const fx = startX + f * (boxSize + gap) + boxSize/2;
+        
+        if (animate) {
+            gsap.to(ptrSlow, { x: sx, y: startY + boxSize/2 + 25, duration: 0.5 });
+            gsap.to(ptrFast, { x: fx, y: startY - boxSize/2 - 25, duration: 0.5 });
+        } else {
+            gsap.set(ptrSlow, { x: sx, y: startY + boxSize/2 + 25 });
+            gsap.set(ptrFast, { x: fx, y: startY - boxSize/2 - 25 });
+        }
+        valSlow.textContent = s;
+        valFast.textContent = f;
+    }
+
+    function highlightCode(lineId) {
+        document.querySelectorAll('.code-line').forEach(el => el.classList.remove('code-highlight'));
+        if(lineId) document.getElementById(`line-${lineId}`).classList.add('code-highlight');
+    }
+
+    async function play() {
+        await new Promise(r => setTimeout(r, 1000));
+        
+        let slow = 1;
+        let fast = 1;
+        
+        stepDesc.textContent = "算法开始：fast 和 slow 指针均从索引 1 开始";
+        highlightCode(1);
+        updatePointers(slow, fast);
+        await new Promise(r => setTimeout(r, 1500));
+
+        while (fast < n) {
+            highlightCode(2);
+            stepDesc.textContent = `循环检查：fast = ${fast} < n`;
+            await new Promise(r => setTimeout(r, 800));
+
+            highlightCode(3);
+            const isDifferent = nums[fast] !== nums[fast - 1];
+            stepDesc.textContent = `比较 nums[${fast}](${nums[fast]}) 和 nums[${fast-1}](${nums[fast-1]})`;
+            
+            // 高亮比较的两个元素
+            gsap.to(elementNodes[fast].bg, { fill: varColor('--primary'), duration: 0.3 });
+            gsap.to(elementNodes[fast-1].bg, { fill: varColor('--secondary'), duration: 0.3 });
+            await new Promise(r => setTimeout(r, 1000));
+
+            if (isDifferent) {
+                stepDesc.textContent = "检测到新元素！将其移至 slow 指针位置";
+                highlightCode(4);
+                
+                // 执行赋值动画
+                const targetX = (startX + slow * (boxSize + gap) + boxSize/2) - (startX + fast * (boxSize + gap) + boxSize/2);
+                
+                // 创建一个飞行的副本
+                const flying = elementNodes[fast].g.cloneNode(true);
+                elementsLayer.appendChild(flying);
+                
+                nums[slow] = nums[fast];
+                
+                await gsap.to(flying, {
+                    x: `+=${targetX}`,
+                    duration: 0.8,
+                    ease: "power2.inOut"
+                });
+                
+                // 更新目标位置的文字
+                elementNodes[slow].text.textContent = nums[fast];
+                elementNodes[slow].val = nums[fast];
+                gsap.fromTo(elementNodes[slow].bg, {fill: varColor('--accent')}, {fill: "#1E293B", duration: 1});
+                elementsLayer.removeChild(flying);
+
+                highlightCode(5);
+                slow++;
+                stepDesc.textContent = "增加 slow 指针，指向下一个待写入位置";
+                updatePointers(slow, fast);
+                await new Promise(r => setTimeout(r, 1000));
+            } else {
+                stepDesc.textContent = "元素重复，跳过";
+                await new Promise(r => setTimeout(r, 600));
+            }
+
+            // 恢复颜色
+            gsap.to([elementNodes[fast].bg, elementNodes[fast-1].bg], { fill: "#1E293B", duration: 0.3 });
+
+            highlightCode(7);
+            fast++;
+            updatePointers(slow, Math.min(fast, n-1));
+            await new Promise(r => setTimeout(r, 800));
+        }
+
+        highlightCode(9);
+        stepDesc.textContent = `算法结束。返回前缀长度 slow = ${slow}`;
+        
+        // 高亮结果部分
+        for(let i=0; i<slow; i++) {
+            gsap.to(elementNodes[i].bg, { fill: "rgba(16, 185, 129, 0.3)", stroke: varColor('--success'), duration: 0.5 });
+        }
+        
+        await new Promise(r => setTimeout(r, 4000));
+        location.reload();
+    }
+
+    function varColor(name) {
+        return getComputedStyle(document.documentElement).getPropertyValue(name.replace('var(', '').replace(')', '')).trim();
+    }
+
+    init();
+    play();
+
+</script>
+</body>
+</html>
